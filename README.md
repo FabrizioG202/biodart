@@ -27,7 +27,10 @@ In the spirit of the project, the only third party dependency this package has, 
 Main module containing common genomics data structures and algorithms.
 
 ## hic
-Module for reading [Hi-C](https://en.wikipedia.org/wiki/Hi-C_(genomic_analysis_technique)) contact maps. This module is being actively worked on and will be the first (format/workflow) to be released.
+Module for reading [Hi-C](https://en.wikipedia.org/wiki/Hi-C_(genomic_analysis_technique)) contact maps. This module is being actively worked on and will be the first (format/workflow) to be released. 
+
+> [!NOTE]
+> The hic package is now in a semi-usable state. Refer to the subdirectory for more information.
 
 
 # 🚀 Roadmap
@@ -41,7 +44,7 @@ Module for reading [Hi-C](https://en.wikipedia.org/wiki/Hi-C_(genomic_analysis_t
     - [ ] VCF
     - [ ] GFF
     - [ ] BED
-    - [x] Hi-C (in progress)  
+    - [x] Hi-C (V8 support is public), older versions and V9 support is being worked on.
 - [ ] Implement common algorithms
     - [ ] Needleman-Wunsch
     - [ ] Smith-Waterman

@@ -8,3 +8,8 @@ environment:
 
 dev_dependencies:
   lint:
+
+# For ease of development.
+dependency_overrides:
+  readers:
+    path: ../readers

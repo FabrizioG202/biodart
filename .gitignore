@@ -3,5 +3,3 @@ pubspec.lock
 .data/
 .vscode/
 
-# Hic package is not ready yet.
-hic/
