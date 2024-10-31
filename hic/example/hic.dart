@@ -27,16 +27,14 @@ void main() {
   // and of the `readers` package, which is used to read the file.
   handleSync(
     (b) sync* {
-      // Read the header and master index
       yield* file.readHeader(b).passthrough<void>();
       yield* file.readMasterIndex(b).passthrough<void>();
-
-      // Stop the parser
-      yield PartialParseResult.stop;
     },
     source,
     clearOnPassthrough: true,
-  );
+
+    // A change might be in order here, this is not optimal.
+  ).toList();
 
   // Now that the header is read, get chr1, using
   final chr1 = file.header.genome.getChromosome('1').asRange();
@@ -46,21 +44,17 @@ void main() {
   // is not ready yet.
   //
   // I am working on a way to make this better.
-  final (
-    Float32List data, //2D matrix, flattened to a 1D array (row-major order)
-    (
-      int width,
-      int height,
-    ) shape // Shape of the matrix,
-  ) = handleSync(
-    (b) => file.readContactsAsMatrix(
+  final contacts = handleSync(
+    (b) => file.iterateContacts(
       b,
       chr1,
       chr1,
       const Resolution.bp(50000),
     ),
     source,
-  );
+  ).toList();
+
+  print('Read ${contacts.length} contacts.');
 
   // Close the source.
   source.close();

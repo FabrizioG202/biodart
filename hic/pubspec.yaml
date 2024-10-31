@@ -1,6 +1,6 @@
 name: hic
 description: A single-file library to read Hi-C data.
-version: 0.0.1-wip
+version: 0.0.2-wip
 publish_to: none
 
 resolution: workspace

@@ -56,6 +56,8 @@ final class Resolution {
 /// Represents a region of a given file. Used in [ResolutionMetadata.blockIndex].
 typedef FileRegion = ({int /* i64 */ offset, int /* i32 */ length});
 
+typedef ContactRecord = (int binX, int binY, double value);
+
 @immutable
 final class Header {
   const Header({
@@ -286,7 +288,7 @@ final class HiCFile {
 
   /// For now, [HiCFile.readMasterIndex] must have been called before this function.
   /// Do not call this directly, unless you really know what you're
-  /// doing, if you do not, use [readContactsAsMatrix] instead.
+  /// doing, if you do not, use [iterateContacts] instead.
   /// Read the metadata for the matrix.
   @protected
   @visibleForTesting
@@ -361,7 +363,7 @@ final class HiCFile {
   }
 
   /// Reads the matrix data for the given genomic ranges
-  ParseIterator<(Float32List, (int, int))> readContactsAsMatrix(
+  ParseIterator<ContactRecord> iterateContacts(
     ByteAccumulator buffer,
     GenomicRange xRange,
     GenomicRange yRange,
@@ -443,7 +445,7 @@ final class HiCFile {
     final m = yRangeInBins.length;
 
     // allocate the matrix
-    final matrix = Float32List(n * m);
+    // final matrix = Float32List(n * m);
     var blockMisses = 0;
     var blockHits = 0;
 
@@ -535,24 +537,26 @@ final class HiCFile {
         final x = binX - xRangeInBins.start;
         final y = binY - yRangeInBins.start;
         if (xRangeInBins.contains(binX) && yRangeInBins.contains(binY)) {
-          matrix[x * m + y] = value;
-          matrix[y * n + x] = value;
+          // matrix[x * m + y] = value;
+          // matrix[y * n + x] = value;
+
+          yield CompleteParseResult.incomplete((binX, binY, value));
         }
       }
     }
 
-    {
-      // check the sum counts
-      // ! This is just a quick method to check that the data is correct. It only works for
-      // full matrices. I am using this while developing the package, and will remove it
-      // as soon as I have a better way to validate the data. (mainly testing)
-      final sum = matrix.fold<double>(0, (a, b) => a + b);
-      print('Block hits: $blockHits, block misses: $blockMisses');
-      print('Sum: $sum, sumCounts: $sumCounts');
-    }
+    // {
+    //   // check the sum counts
+    //   // ! This is just a quick method to check that the data is correct. It only works for
+    //   // full matrices. I am using this while developing the package, and will remove it
+    //   // as soon as I have a better way to validate the data. (mainly testing)
+    //   final sum = matrix.fold<double>(0, (a, b) => a + b);
+    //   print('Block hits: $blockHits, block misses: $blockMisses');
+    //   print('Sum: $sum, sumCounts: $sumCounts');
+    // }
 
     // For now, return just an empty matrix
-    yield CompleteParseResult((matrix, (n, m)));
+    // yield CompleteParseResult((matrix, (n, m)));
   }
 }
 
