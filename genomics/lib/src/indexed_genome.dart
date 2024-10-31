@@ -91,4 +91,7 @@ class IndexedGenome with GenomeReference {
 
   @override
   List<Chromosome> get chromosomes => _chromosomes;
+
+  @override
+  String toString() => 'IndexedGenome($_chromosomes)';
 }
