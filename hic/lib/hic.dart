@@ -56,6 +56,10 @@ final class Resolution {
 /// Represents a region of a given file. Used in [ResolutionMetadata.blockIndex].
 typedef FileRegion = ({int /* i64 */ offset, int /* i32 */ length});
 
+/// A record in the contact matrix.
+/// We use this class given the sparse nature of the matrix.
+/// API?: Might make this an interface and have an optimized class
+/// for when the contact matrix is dense.
 typedef ContactRecord = (int binX, int binY, double value);
 
 @immutable
@@ -121,21 +125,26 @@ final class ResolutionMetadata {
       ')';
 }
 
+@protected
+typedef MasterIndex = Map<String, (int, int)>;
+
+@pragma('vm:prefer-inline')
 final class HiCFile {
   HiCFile();
 
   /// Header of the file, contains information about the genome
   /// and the resolutions available in the file.
   /// [HiCFile.readHeader] must have been called before this field is accessed.
-  Header get header => _header ?? (throw StateError('Header was not parsed'));
+  Header get header => _header ?? _throwStateError('Header was not parsed');
   Header? _header;
 
   /// Contains the position and length of the matrices in the file.
   /// [HiCFile.readMasterIndex] must have been called before this field is accessed.
-  Map<String, (int, int)> get masterIndex =>
-      _masterIndex ?? (throw StateError('Master-Index was not parsed'));
-  Map<String, (int, int)>? _masterIndex;
+  MasterIndex get masterIndex =>
+      _masterIndex ?? _throwStateError('Master index was not parsed');
+  MasterIndex? _masterIndex;
 
+  /// Read the header of the file.
   Iterable<PartialParseResult<Header>> readHeader(
     ByteAccumulator buffer,
   ) sync* {
@@ -425,7 +434,6 @@ final class HiCFile {
     );
 
     // Returns the block numbers for the given range,
-    // according to v8 specification.
     Iterable<int> blockNumbersV8() sync* {
       final xBlockStart = (xRangeInBins.start / blockSize).floor();
       final xBlockEnd = (xRangeInBins.end / blockSize).ceil();
@@ -534,29 +542,11 @@ final class HiCFile {
             ? getFloat32(blockBuffer, blockCursor)
             : getInt16(blockBuffer, blockCursor).toDouble();
 
-        final x = binX - xRangeInBins.start;
-        final y = binY - yRangeInBins.start;
         if (xRangeInBins.contains(binX) && yRangeInBins.contains(binY)) {
-          // matrix[x * m + y] = value;
-          // matrix[y * n + x] = value;
-
           yield CompleteParseResult.incomplete((binX, binY, value));
         }
       }
     }
-
-    // {
-    //   // check the sum counts
-    //   // ! This is just a quick method to check that the data is correct. It only works for
-    //   // full matrices. I am using this while developing the package, and will remove it
-    //   // as soon as I have a better way to validate the data. (mainly testing)
-    //   final sum = matrix.fold<double>(0, (a, b) => a + b);
-    //   print('Block hits: $blockHits, block misses: $blockMisses');
-    //   print('Sum: $sum, sumCounts: $sumCounts');
-    // }
-
-    // For now, return just an empty matrix
-    // yield CompleteParseResult((matrix, (n, m)));
   }
 }
 
@@ -565,6 +555,15 @@ final class HiCFile {
 /// to the final version of the library. Though, if they do, they will
 /// probably be moved to a separate file, or more likely a custom
 /// package.
+///
+
+/// The only reason I have this function is to avoid the following syntax,
+/// which I find not particularly pleasant:
+/// ```dart
+/// value = value ?? (throw StateError('Value is null'));
+/// ```
+@pragma('vm:prefer-inline')
+Never _throwStateError(String message) => throw StateError(message);
 
 extension UnwrapExt<T> on T? {
   T expect(String message) => switch (this) {

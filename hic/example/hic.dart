@@ -36,7 +36,7 @@ void main() {
     // A change might be in order here, this is not optimal.
   ).toList();
 
-  // Now that the header is read, get chr1, using
+  // Now that the header is read, get the whole range of chr1.
   final chr1 = file.header.genome.getChromosome('1').asRange();
 
   // Read the contacts for chr1 at 50kb resolution
