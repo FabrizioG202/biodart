@@ -13,7 +13,7 @@ I developed this package to address some pain points with existing implementatio
 
 See a list of simple examples in the `example` folder. Although many of those are not yet implemented, they will be made available as soon as the underlying features are ready.
 
-Once the package is more mature, I will provide a more detailed example. For now, here is a simple example of how to use the package, including most of the features that are already implemented.:
+Once the package is more mature, I will provide examples and documentation for all the features. For now, here is a simple snippet that shows the basic usage including most of the features that are already implemented:
 
 ```dart
 
@@ -76,5 +76,9 @@ void main() {
   source.close();
 }
 ```
+
+# Performance
+Throughout the code, there are performance pitfalls and bottlenecks, many of which I am aware of. The more obvious ones are marked as so and are being left in mainly due to ease of development and testing. They will be swiftly addressed as we move out of alpha.
+
 # Credits
-Particular thanks to the [Aiden Lab](https://github.com/aidenlab) for developing the Hi-C format and for providing a detailed specification.
+Particular praise goes to the [Aiden Lab](https://github.com/aidenlab) for developing the Hi-C format and for providing a detailed specification.
