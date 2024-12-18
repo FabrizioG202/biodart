@@ -1,8 +1,7 @@
-// ignore_for_file: unused_local_variable
-
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:collection/collection.dart';
 import 'package:hic/hic.dart';
 import 'package:hic/passthrough.dart';
 import 'package:readers/readers.dart';
@@ -29,6 +28,7 @@ void main() {
     (b) sync* {
       yield* file.readHeader(b).passthrough<void>();
       yield* file.readMasterIndex(b).passthrough<void>();
+      yield* file.readExpectedValueVectors(b).passthrough<void>();
     },
     source,
     clearOnPassthrough: true,
@@ -38,24 +38,29 @@ void main() {
 
   // Now that the header is read, get the whole range of chr1.
   final chr1 = file.header.genome.getChromosome('1').asRange();
+  const resolution = Resolution.bp(2500000);
 
   // Read the contacts for chr1 at 50kb resolution
   // These are the observed counts, since normalization
   // is not ready yet.
   //
   // I am working on a way to make this better.
+  // final expectedValues = file.getExpectedValues(resolution, );
   final contacts = handleSync(
     (b) => file.iterateContacts(
       b,
       chr1,
       chr1,
-      const Resolution.bp(50000),
+      resolution,
+      kind: ContactsKind.normalized('VC'),
     ),
     source,
   ).toList();
 
-  print('Read ${contacts.length} contacts.');
+  print(contacts.length);
 
   // Close the source.
   source.close();
 }
+
+// Mabe add a callback that tells wether to cache an expected value entry.

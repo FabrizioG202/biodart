@@ -3,8 +3,6 @@
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
-// ignore_for_file: unused_local_variable
-
 /// This file contains the full implementation of the HiC file format data structures and parsing functions.
 /// It is a work in progress, and is not yet fully optimized.
 /// Once the library is more mature, this file will be split into multiple files.
@@ -15,11 +13,13 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:collection/collection.dart';
 import 'package:genomics/genomics.dart';
 import 'package:hic/parsing.dart';
 import 'package:meta/meta.dart';
 import 'package:readers/readers.dart';
 
+@protected
 enum ResolutionType {
   frag('FRAG'),
   bp('bp');
@@ -72,6 +72,7 @@ final class Header {
     required this.genome,
     required this.resolutions,
     this.sites = const {},
+    this.expectedVectorsRegion,
   });
 
   final int version;
@@ -80,9 +81,38 @@ final class Header {
   final IndexedGenome genome;
   final List<Resolution> resolutions;
   final int /* i64 */ footerPosition;
+
+  /// The offset and size, in the file of the normalization data.
+  /// This is known only after reading the master index.
+  /// So, if no normalization is requested, this field
+  /// will stay null.
+  final FileRegion? expectedVectorsRegion;
   final Map<String, List<int /* i32 */ >> sites;
 
   int get masterIndexPosition => footerPosition + 4;
+
+  Header copyWith({
+    int? version,
+    String? genomeId,
+    HashMap<String, String>? attributes,
+    IndexedGenome? genome,
+    List<Resolution>? resolutions,
+    int? footerPosition,
+    FileRegion? expectedVectorsRegion,
+    Map<String, List<int>>? sites,
+  }) {
+    return Header(
+      version: version ?? this.version,
+      genomeId: genomeId ?? this.genomeId,
+      attributes: attributes ?? this.attributes,
+      genome: genome ?? this.genome,
+      resolutions: resolutions ?? this.resolutions,
+      footerPosition: footerPosition ?? this.footerPosition,
+      expectedVectorsRegion:
+          expectedVectorsRegion ?? this.expectedVectorsRegion,
+      sites: sites ?? this.sites,
+    );
+  }
 
   @override
   String toString() => 'Header('
@@ -128,7 +158,6 @@ final class ResolutionMetadata {
 @protected
 typedef MasterIndex = Map<String, (int, int)>;
 
-@pragma('vm:prefer-inline')
 final class HiCFile {
   HiCFile();
 
@@ -144,6 +173,21 @@ final class HiCFile {
       _masterIndex ?? _throwStateError('Master index was not parsed');
   MasterIndex? _masterIndex;
 
+  /// Contains the expected values for the file.
+  /// [HiCFile.readExpectedValueVectors] must have been called before this field is accessed.
+  List<ExpectedValues> get expectedValues =>
+      _expectedValues ?? _throwStateError('Expected values were not parsed');
+  List<ExpectedValues>? _expectedValues;
+
+  ExpectedValues? getExpectedValues(
+    Resolution resolution, [
+    String? normalization,
+  ]) =>
+      expectedValues.firstWhereOrNull(
+        (e) =>
+            e.resolution == resolution && e.normalizationType == normalization,
+      );
+
   /// Read the header of the file.
   Iterable<PartialParseResult<Header>> readHeader(
     ByteAccumulator buffer,
@@ -158,8 +202,7 @@ final class HiCFile {
     // string since if the file is not in the expected format, we might never have
     // a null character and we would stall on the first read.
     cursor.advance(4);
-    final magic =
-        ascii.decode(cursor.slice(buffer)).validate(_equals('HIC\x00'));
+    ascii.decode(cursor.slice(buffer)).validate(_equals('HIC\x00'));
 
     // Version, for now we support only version 8.
     final version = getInt32(buffer, cursor).validate(_equals(8));
@@ -292,6 +335,13 @@ final class HiCFile {
       masterIndex[key] = (binPosition, nBlocks);
     } while (--nEntries > 0);
 
+    // here we update the header to contain the position of the normalization data.
+    _header = header.copyWith(
+      expectedVectorsRegion: (
+        offset: cursor.position + header.footerPosition,
+        length: nBytes + 4
+      ),
+    );
     yield CompleteParseResult(_masterIndex = masterIndex);
   }
 
@@ -318,9 +368,10 @@ final class HiCFile {
     // The chromosome indices are not used right now
     // We might use them in the future to check that the
     // matrix is in the correct order.
+    // we still read them only to advance the cursor.
     final cursor = SliceCursor.collapsed();
-    final chr1Idx = getInt32(buffer, cursor);
-    final chr2Idx = getInt32(buffer, cursor);
+    getInt32(buffer, cursor); // chr1Idx
+    getInt32(buffer, cursor); // chr2Idx
     final resolutionsCount = getInt32(buffer, cursor);
     final resolutions = <ResolutionMetadata>[];
 
@@ -376,15 +427,18 @@ final class HiCFile {
     ByteAccumulator buffer,
     GenomicRange xRange,
     GenomicRange yRange,
-    Resolution resolution,
-  ) sync* {
+    Resolution resolution, {
+    ContactsKind kind = ContactsKind.observed,
+  }) sync* {
+    // This is always necessary
     final header = this.header;
-    final masterIndex = this.masterIndex;
-
     final seq1 = xRange.chromosomeName;
     final seq2 = yRange.chromosomeName;
+
     var seqIdx1 = header.genome.indexOf(seq1);
     var seqIdx2 = header.genome.indexOf(seq2);
+
+    // ignore: unused_local_variable
     final sameChr = seqIdx1 == seqIdx2;
 
     // swap the sequences of indices around if needed.
@@ -395,6 +449,10 @@ final class HiCFile {
 
     // Get the master index key
     final masterIndexKey = '${seqIdx1}_$seqIdx2';
+
+    // We create the cursor only here since we have not
+    // done any reading up to this point.
+    final cursor = SliceCursor.collapsed();
 
     // we parse the metadata for the matrix
     List<ResolutionMetadata>? allMetadata;
@@ -413,7 +471,6 @@ final class HiCFile {
       :blockIndex,
       :blockColumnCount,
       :blockSize,
-      :sumCounts
     ) = allMetadata
         .expect(
           'Failed to parse metadata',
@@ -422,6 +479,22 @@ final class HiCFile {
           (e) => e.resolution == resolution,
           orElse: () => throw StateError('Resolution not found: $resolution'),
         );
+
+    // Normalization related stuff.
+    // I do not like this design too much but it works.
+    final expectedValueNormalizator = switch (kind) {
+      _Observed() => null,
+      _OverExpected() => getExpectedValues(resolution),
+      _Normalized(:final normalizationType) =>
+        getExpectedValues(resolution, normalizationType),
+    };
+
+    final chrScaleNormalization =
+        expectedValueNormalizator?.scaleFactorForChromosomeIndices(
+              seqIdx1,
+              seqIdx2,
+            ) ??
+            1.0;
 
     // We round the range to the nearest bin
     final xRangeInBins = xRange.copyWith(
@@ -434,7 +507,7 @@ final class HiCFile {
     );
 
     // Returns the block numbers for the given range,
-    Iterable<int> blockNumbersV8() sync* {
+    Iterable<int> getV8Blocks() sync* {
       final xBlockStart = (xRangeInBins.start / blockSize).floor();
       final xBlockEnd = (xRangeInBins.end / blockSize).ceil();
 
@@ -448,27 +521,10 @@ final class HiCFile {
       }
     }
 
-    // compute the size of the matrix
-    final n = xRangeInBins.length;
-    final m = yRangeInBins.length;
-
-    // allocate the matrix
-    // final matrix = Float32List(n * m);
-    var blockMisses = 0;
-    var blockHits = 0;
-
-    // We create the cursor only here since we have not
-    // done any reading up to this point.
-    final cursor = SliceCursor.collapsed();
-    for (final flatBlockIndex in blockNumbersV8()) {
+    for (final flatBlockIndex in getV8Blocks()) {
       final region = blockIndex[flatBlockIndex];
+      if (region == null) continue;
 
-      if (region == null) {
-        blockMisses++;
-        continue;
-      }
-
-      blockHits++;
       final (:offset, :length) = region;
 
       // read the bytes
@@ -486,6 +542,7 @@ final class HiCFile {
           ByteAccumulator.withData(Uint8List.fromList(zlib.decode(blockBytes)));
       final blockCursor = SliceCursor.collapsed();
 
+      // ignore: unused_local_variable
       final nRecords = getInt32(blockBuffer, blockCursor);
       final binXOffset = getInt32(blockBuffer, blockCursor);
       final binYOffset = getInt32(blockBuffer, blockCursor);
@@ -523,11 +580,8 @@ final class HiCFile {
             final w = getInt16(blockBuffer, blockCursor);
             for (var i = 0; i < nRecords; i++) {
               final row = i ~/ w;
-              final col = i = row * w;
-              yield (
-                (row + binXOffset),
-                (col + binYOffset),
-              );
+              final col = i + row * w;
+              yield (row + binXOffset, col + binYOffset);
             }
           },
         _ => throw StateError(
@@ -543,11 +597,235 @@ final class HiCFile {
             : getInt16(blockBuffer, blockCursor).toDouble();
 
         if (xRangeInBins.contains(binX) && yRangeInBins.contains(binY)) {
-          yield CompleteParseResult.incomplete((binX, binY, value));
+          // normalize the value if needed
+          final normalizedValue = expectedValueNormalizator != null
+              ? value /
+                  (expectedValueNormalizator
+                          .valueForDistance((binX - binY).abs()) *
+                      chrScaleNormalization)
+              : value;
+
+          yield CompleteParseResult.incomplete((binX, binY, normalizedValue));
         }
       }
     }
   }
+
+  /// Quickly iterate to find the region of the file that contains the expected values
+  /// (normalized if available) for the given resolution.
+  /// This will add the content of the buffer to the [HiCFile] object.
+  ParseIterator<List<ExpectedValues>> readExpectedValueVectors(
+    ByteAccumulator buffer,
+  ) sync* {
+    // check that we have the normalization position
+    final filePosition = header.expectedVectorsRegion
+        .expect('Normalization position not found, call readMasterIndex first');
+
+    // Expected value vectors
+    final cursor = SliceCursor.collapsed();
+
+    // Just position us at the start of the normalization data.
+    yield PartialReadRequest(sourcePosition: filePosition.offset);
+
+    // Reset the file's expected values
+    final expectedValues = _expectedValues = [];
+
+    // kinda sketchy way to minimize code duplication
+    // basically:
+    // null = still to read the un-normalized values and the normalized values
+    // false = still to read the normalized values
+    // true = done
+    // TODO: Check if this is actually the best way of doing this.
+    bool? normalizedRead;
+    while (normalizedRead != true) {
+      yield const ExactReadRequest(count: 4);
+      final nExpectedValueVectors = getInt32(buffer, cursor);
+
+      for (var i = 0; i < nExpectedValueVectors; i++) {
+        buffer.clear(startAfter: cursor.position);
+        cursor.reset();
+
+        // Normalization type
+        final String? thisNormalizationTypeString;
+        if (normalizedRead == false) {
+          yield* buffer.advanceToByte(cursor, byte: 0x00);
+          thisNormalizationTypeString = getStringSlice(buffer, cursor);
+        } else {
+          thisNormalizationTypeString = null;
+        }
+
+        // Unit (null terminated string)
+        yield* buffer.advanceToByte(cursor, byte: 0x00);
+        final unit = getStringSlice(buffer, cursor);
+
+        yield const ExactReadRequest(count: 4);
+        final binSize = getInt32(buffer, cursor);
+
+        final resolution = Resolution._(
+          binSize,
+          switch (unit) {
+            'BP' => ResolutionType.bp,
+            'FRAG' => ResolutionType.frag,
+            _ => throw StateError('Invalid unit: $unit'),
+          },
+        );
+
+        // EXPECTED VALUES VECTOR
+        // Perf: this is terrible for performance.
+        final values = <double>[];
+        {
+          yield const ExactReadRequest(count: 4);
+          final nExpectedValues = getInt32(buffer, cursor);
+
+          // perf: ask for all the expected values at once
+          yield ExactReadRequest(count: 8 * nExpectedValues);
+          for (var j = 0; j < nExpectedValues; j++) {
+            final expectedValue = getFloat64(buffer, cursor);
+            values.add(expectedValue);
+          }
+        }
+
+        // CHR SCALE FACTORS
+        // Perf: this is terrible for performance as well, would you look at that.
+        final chrScaleFactors = <(int index, double scaleFactor)>[];
+        {
+          // Read the chrScaleFactors
+          yield const ExactReadRequest(count: 4);
+          final nChrScaleFactors = getInt32(buffer, cursor);
+
+          // PERF: Ask for all the chrScaleFactors at once
+          yield ExactReadRequest(count: 12 * nChrScaleFactors);
+          for (var j = 0; j < nChrScaleFactors; j++) {
+            final chrIndex = getInt32(buffer, cursor);
+            final nValues = getFloat64(buffer, cursor);
+            chrScaleFactors.add((chrIndex, nValues));
+          }
+        }
+
+        expectedValues.add(
+          ExpectedValues(
+            values: Float64List.fromList(values),
+            chrScaleFactors: chrScaleFactors,
+            normalizationType: thisNormalizationTypeString,
+            resolution: resolution,
+          ),
+        );
+      }
+
+      // If the value is null, we set it to false
+      // if it is false, we set it to true.
+      // TODO: Check if this is actually needed.
+      normalizedRead = switch (normalizedRead) {
+        null => false,
+        _ => true,
+      };
+    }
+
+    yield CompleteParseResult(expectedValues);
+  }
+
+  /// API: A dummy contacts iterator might be provided.
+  /// To compute generally expected values, independently of the observed contacts.
+  Iterable<ContactRecord> normalizeContacts(
+    Iterable<ContactRecord> contacts,
+    ExpectedValues data,
+    GenomicRange xRange,
+    GenomicRange yRange,
+  ) sync* {
+    final header = this.header;
+
+    final (_, chr1ScaleFactor) = data.chrScaleFactors
+        .firstWhereOrNull(
+          (e) => e.$1 == header.genome.indexOf(xRange.chromosomeName),
+        )
+        .expect(
+          'Scale Factor not found for: ${xRange.chromosomeName}',
+        );
+
+    final (_, chr2ScaleFactor) = data.chrScaleFactors
+        .firstWhereOrNull(
+          (e) => e.$1 == header.genome.indexOf(yRange.chromosomeName),
+        )
+        .expect(
+          'Scale Factor not found for: ${yRange.chromosomeName}',
+        );
+
+    // Loop over the contacts and normalize them.
+    for (final (binX, binY, value) in contacts) {
+      // is this correct? who knows, I think so.
+      final expectedValueBasedOnDistance = data.valueForDistance(
+        (binX - binY).abs(),
+      );
+
+      yield (
+        binX,
+        binY,
+
+        // divide the value by the expected value based on distance
+        // TODO: this might produce a NaN if the expected value is 0
+        // so maybe handle that case...
+        (value /
+            (expectedValueBasedOnDistance * chr1ScaleFactor * chr2ScaleFactor))
+      );
+    }
+  }
+}
+
+final class ExpectedValues {
+  final String? normalizationType;
+  final Resolution resolution;
+  final Float64List values;
+  final List<(int index, double scaleFactor)> chrScaleFactors;
+
+  ExpectedValues({
+    required this.values,
+    required this.chrScaleFactors,
+    this.normalizationType,
+    required this.resolution,
+  });
+
+  double valueForDistance(int distance) =>
+      values[distance.clamp(0, values.length - 1)];
+
+  double scaleFactorForChromosomeIndices(int chr1, int chr2) =>
+      chrScaleFactors
+          .firstWhereOrNull(
+            (e) => e.$1 == chr1,
+          )
+          .expect(
+            'Scale Factor not found for: $chr1',
+          )
+          .$2 *
+      chrScaleFactors
+          .firstWhereOrNull(
+            (e) => e.$1 == chr2,
+          )
+          .expect(
+            'Scale Factor not found for: $chr2',
+          )
+          .$2;
+}
+
+sealed class ContactsKind {
+  const ContactsKind();
+  static const observed = _Observed();
+  static const overExpected = _OverExpected();
+  factory ContactsKind.normalized(String normalizationType) =>
+      _Normalized(normalizationType);
+}
+
+final class _Observed extends ContactsKind {
+  const _Observed();
+}
+
+/// TODO: find a better name for this.
+final class _OverExpected extends ContactsKind {
+  const _OverExpected();
+}
+
+final class _Normalized extends ContactsKind {
+  final String normalizationType;
+  const _Normalized(this.normalizationType);
 }
 
 /// Below here I have thrown some utility functions that I have used

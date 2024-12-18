@@ -20,7 +20,7 @@ Dart is a relatively modern language, with a strong type system, and a focus on 
 > This project is currently maintained only by me, mirroring the requirements of personal projects, but features can be requested and contributions are welcome. Feel free to get in contact if you would like to help development.
 
 # Disclaimer:
-In the spirit of the project, the only third party dependency this package has, is on the _readers_ package, which is required for ease of use. 
+In the spirit of the project, the only ~(third party) dependency this package has, is on the _readers_ package, required to provide a source and format-agnostic IO framework. 
  
 # 📦 Packages
 ## genomics
@@ -34,19 +34,34 @@ Module for reading [Hi-C](https://en.wikipedia.org/wiki/Hi-C_(genomic_analysis_t
 
 
 # 🚀 Roadmap
-- [ ] Implement fundamental data structures
-    - [x] GenomicRange, Strand, Chromosome
-    - [x] GenomeReference
+- [ ] Fundamental data structures
+    - [x] GenomicRange, Strand, Chromosome implementations
+    - [x] GenomeReference implementation
 - [ ] Format readers
     - [ ] FASTA
+        - [ ] Header and sequence identifier parsing
+        - [ ] Nucleotide sequence reading
+        - [ ] Multiline sequence handling
+        - [ ] Sequence validation
+        - [ ] Full Unit Tests.
     - [ ] FASTQ
-    - [ ] SAM/BAM
-    - [ ] VCF
-    - [ ] GFF
-    - [ ] BED
-    - [x] Hi-C (V8 support is public), older versions and V9 support is being worked on.
-- [ ] Implement common algorithms
-    - [ ] Needleman-Wunsch
-    - [ ] Smith-Waterman
+        - [ ] Header and sequence identifier parsing
+        - [ ] Nucleotide sequence reading
+        - [ ] Quality score parsing
+        - [ ] Quality score validation
+        - [ ] Full Unit Tests.
+    - [ ] SAM/BAM: *Roadmap not yet created*
+    - [ ] VCF: *Roadmap not yet created*
+    - [ ] GFF: *Roadmap not yet created*
+    - [ ] BED: *Roadmap not yet created*
+    - [x] Hi-C formats
+        - [x] V8 format support
+        - [ ] Legacy version support
+        - [ ] V9 format implementation
+- [ ] Common algorithms
+    - [ ] Sequence alignment: *Roadmap not yet created*
 
-- [ ] Add tests for all modules
+- [ ] Testing
+    - [ ] Unit test coverage
+    - [ ] Integration testing
+    - [ ] Performance benchmarks

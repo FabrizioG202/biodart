@@ -9,6 +9,9 @@ A pure-dart, zero-dependency* parser for the Hi-C file format. Currently it supp
 
 I developed this package to address some pain points with existing implementations, and mainly as the backbone to proprietary, closed source software. But the package itself is licensed (like the rest of the `biodart` project) as MIT, and it can be used as a standalone library to enable extremely fast parsing of Hi-C Contacts data. 
 
+# Installation
+Refer to the biodart project's installation instructions.
+
 # Code Example
 
 See a list of simple examples in the `example` folder. Although many of those are not yet implemented, they will be made available as soon as the underlying features are ready.

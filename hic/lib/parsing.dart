@@ -61,7 +61,7 @@ double getFloat32(
   return cursor.slice(buffer).buffer.asByteData().getFloat32(0, endian);
 }
 
-double getFloat64V2(
+double getFloat64(
   ByteAccumulator buffer,
   SliceCursor cursor, {
   Endian endian = Endian.little,
