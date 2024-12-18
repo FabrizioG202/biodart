@@ -1,7 +1,5 @@
 import 'dart:io';
-import 'dart:typed_data';
 
-import 'package:collection/collection.dart';
 import 'package:hic/hic.dart';
 import 'package:hic/passthrough.dart';
 import 'package:readers/readers.dart';
@@ -13,7 +11,7 @@ void main() {
 
   // Create a HiC file object.
   // This is more of a container for the file, and does not
-  // read the file itself.
+  // read the data alone.
   final file = HiCFile();
 
   // This is not optimal, I am working

@@ -2,12 +2,18 @@ name: biodart
 workspace:
   - hic/
   - genomics/
+  - fasta/
 
 environment:
-  sdk: ">=3.5.0 <4.0.0"
+  sdk: ">=3.6.0 <4.0.0"
+
+dependencies:
+  collection:
+  meta:
 
 dev_dependencies:
   lint:
+  test:
 
 # For ease of development.
 dependency_overrides:

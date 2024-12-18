@@ -3,18 +3,13 @@ description: A single-file library to read Hi-C data.
 version: 0.0.2-wip
 publish_to: none
 
-resolution: workspace
-
 environment:
-  sdk: 3.6.0-216.1.beta
+  sdk: ^3.6.0
+
+resolution: workspace
 
 dependencies:
   collection:
   genomics:
   meta:
   readers:
-    git:
-      url: https://github.com/FabrizioG202/readers.git
-
-dev_dependencies:
-  test:

@@ -1,0 +1,16 @@
+name: fasta
+description: A library to read FASTA files.
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ^3.6.0
+
+resolution: workspace
+
+dependencies:
+  meta:
+  readers:
+
+dev_dependencies:
+  test:
