@@ -1,5 +1,5 @@
 name: fasta
-description: A library to read FASTA files.
+description: A library providing support for the FASTA and FASTQ.
 version: 1.0.0
 publish_to: none
 

@@ -41,8 +41,12 @@ class FastaFormatException implements Exception {
   String toString() => 'FastaFormatException: $message';
 }
 
-/// Reads all sequences from a FASTA format buffer.
-ParseIterator<FastaRead> readAllSequences(ByteAccumulator buffer) sync* {
+// Very Naive Implementation of a FastA file parser.
+// It is mainly
+ParseIterable<FastaRead> readEntries(ByteAccumulator buffer) sync* {
+  final cursor = Cursor();
+
+  // Fasta Stuff
   var header = '';
   final sequence = StringBuffer();
   var isInHeader = false;
@@ -50,14 +54,19 @@ ParseIterator<FastaRead> readAllSequences(ByteAccumulator buffer) sync* {
   var position = 0;
 
   while (true) {
-    yield const PartialReadRequest(maxCount: 1024);
-    final view = buffer.getBytesView();
+    // Request 5 bytes.
+    // This is an arbitrary length to not read too much data at the same time.
+    yield ByteRangeRequest(cursor.position, cursor.position + 5, purgePreceding: true);
+
+    // Get the view bytes and, since exact is false,
+    // we might have read less bytes than 5, we advance the cursor only
+    // to that point.
+    final view = buffer.viewRange(cursor.position, buffer.lengthInBytes);
+    cursor.advance(view.length);
+
+    // No more bytes were read.
     if (view.isEmpty) break;
 
-    // PERF: We might be better off by not mapping to string
-    // but rather checking the character to known char indices
-    // and only convert to string when adding to the buffer.
-    // We might also be able to add bytes to the buffer directly.
     for (final char in view.map(String.fromCharCode)) {
       position++;
 
@@ -65,12 +74,12 @@ ParseIterator<FastaRead> readAllSequences(ByteAccumulator buffer) sync* {
         case '>':
           if (hasSequence) {
             if (sequence.isEmpty) {
-              throw FastaFormatException(
+              throw Exception(
                 'Empty sequence for header "$header" at position $position',
               );
             }
             final seq = sequence.toString().replaceAll(RegExp(r'\s'), '');
-            yield CompleteParseResult.incomplete(FastaRead(header, seq));
+            yield ParseResult(FastaRead(header, seq));
             sequence.clear();
           }
           header = '';
@@ -82,7 +91,7 @@ ParseIterator<FastaRead> readAllSequences(ByteAccumulator buffer) sync* {
 
         case String s:
           if (!hasSequence && !isInHeader && s.trim().isNotEmpty) {
-            throw FastaFormatException(
+            throw Exception(
               'Found sequence data before header at position $position',
             );
           }
@@ -93,16 +102,15 @@ ParseIterator<FastaRead> readAllSequences(ByteAccumulator buffer) sync* {
           }
       }
     }
-    buffer.clear();
   }
 
   if (hasSequence) {
     if (sequence.isEmpty) {
-      throw FastaFormatException(
+      throw Exception(
         'Empty sequence for header "$header" at position $position',
       );
     }
     final seq = sequence.toString().replaceAll(RegExp(r'\s'), '');
-    yield CompleteParseResult(FastaRead(header, seq));
+    yield ParseResult(FastaRead(header, seq));
   }
 }
