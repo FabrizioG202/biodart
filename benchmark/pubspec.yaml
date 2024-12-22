@@ -1,0 +1,12 @@
+name: benchmark
+publish_to: none
+
+environment:
+  sdk: ^3.6.0
+
+resolution: workspace
+
+dependencies:
+  http:
+  logging:
+  path:
