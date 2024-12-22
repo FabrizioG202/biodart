@@ -74,7 +74,7 @@ ParseIterable<FastaRead> readEntries(ByteAccumulator buffer) sync* {
         case '>':
           if (hasSequence) {
             if (sequence.isEmpty) {
-              throw Exception(
+              throw FastaFormatException(
                 'Empty sequence for header "$header" at position $position',
               );
             }
@@ -91,7 +91,7 @@ ParseIterable<FastaRead> readEntries(ByteAccumulator buffer) sync* {
 
         case String s:
           if (!hasSequence && !isInHeader && s.trim().isNotEmpty) {
-            throw Exception(
+            throw FastaFormatException(
               'Found sequence data before header at position $position',
             );
           }
@@ -106,7 +106,7 @@ ParseIterable<FastaRead> readEntries(ByteAccumulator buffer) sync* {
 
   if (hasSequence) {
     if (sequence.isEmpty) {
-      throw Exception(
+      throw FastaFormatException(
         'Empty sequence for header "$header" at position $position',
       );
     }
