@@ -3,6 +3,7 @@ workspace:
   - hic/
   - genomics/
   - fasta/
+  - benchmark/
 
 environment:
   sdk: ">=3.6.0 <4.0.0"

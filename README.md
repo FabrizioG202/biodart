@@ -1,6 +1,6 @@
 # BioDart
 
-An effort to develop a Bioinformatics Toolkit in pure-dart. The goal of this project is to leverage the _performance_, _ease of use_ and especially _portability_ of Dart to create tools that can be used across multiple platforms with minimal to no dependency.
+An effort to develop a Bioinformatics Toolkit in pure-dart. The goal of this project is to leverage the _performance_, _ease of use_ and especially the _portability_ of Dart to create tools that can be used across multiple platforms with minimal to no dependencies.
 
 # ✨ TLDR: Features
 
@@ -15,7 +15,7 @@ An effort to develop a Bioinformatics Toolkit in pure-dart. The goal of this pro
 Dart is a relatively modern language, with a strong type system, and a focus on performance. It is also a language that is easy to learn and use, and has a strong community backing it. This repo exists to try and ease the dependency hell that bioinformatics tools often face.
 
 > [!IMPORTANT]
-> The contents of this repo are still in very early stages of development and are not yet ready for production use. Refer to the [Roadmap](#roadmap) for more information.
+> The contents of this repo are still in very early stages of development and are not yet ready for production use. Refer to the [Roadmap Section](#roadmap) for more information.
 
 > [!Note]
 > This project is currently maintained only by me, mirroring the requirements of personal projects, but features can be requested and contributions are welcome. Feel free to get in contact if you would like to help development.
@@ -30,16 +30,26 @@ In the spirit of the project, the only ~(third party) dependency this package ha
 
 Main module containing common genomics data structures and algorithms.
 
+## benchmark
+
+Utility module to aid in benchmarking of the biodart features. Provides method to download and cache large files. Will be expanded in the near future to keep up with benchmarking and testing needs.
+
+> [!NOTE]
+> Warning.
+
 ## hic
 
 Module for reading [Hi-C](<https://en.wikipedia.org/wiki/Hi-C_(genomic_analysis_technique)>) contact maps. Currently it supports only V8 files ([format specification](https://github.com/aidenlab/hic-format/blob/master/HiCFormatV8.md), though support for V9 and older formats is being actively worked on.
 
-## fasta:
+> [!WARNING]
+> The hic package was fully broken by the update in the readers package it relied upon. I am working on a fix for that.
+
+## fasta
 
 Module for reading and writing FASTA files. This module is currently in a semi-usable state and is being worked on. See the subdirectory's `example` folder for more information.
 
-> [!NOTE]
-> The hic package is now in a semi-usable state. Refer to the subdirectory for more information.
+> [!WARNING]
+> Performance is still abysmal as the readers package lacks user-defined customization and in turn performance tuning for specific workloads.
 
 # 🚀 Roadmap
 
@@ -63,8 +73,8 @@ Module for reading and writing FASTA files. This module is currently in a semi-u
   - [ ] VCF: _Roadmap not yet created_
   - [ ] GFF: _Roadmap not yet created_
   - [ ] BED: _Roadmap not yet created_
-  - [x] Hi-C formats
-    - [x] V8 format support
+  - [-] Hi-C formats _broken_
+    - [-] V8 format support _broken_
     - [ ] Legacy version support
     - [ ] V9 format implementation
 - [ ] Common algorithms
