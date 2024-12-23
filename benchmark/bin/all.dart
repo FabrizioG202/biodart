@@ -31,7 +31,7 @@ Future<void> main() async {
       allSequences = parseSync(
         (b) => zlibDecode(b, (b) => readEntries(b, chunkReadSize: 4096 * 8), decompressChunkSize: 4096 * 16),
         source,
-      ).take(2000).toList();
+      ).take(200).toList();
     },
     10,
     setupAll: () => source.open(),

@@ -13,12 +13,10 @@ String _formatBytes(int bytes) {
 }
 
 String _formatDuration(Duration d) {
-  final nanos = d.inMicroseconds * 1000;
-  if (nanos < 1000) return '${nanos.toStringAsFixed(2)} ps';
-  if (nanos < 1000000) return '${(nanos / 1000).toStringAsFixed(2)} ns';
-  if (nanos < 1000000000) return '${(nanos / 1000000).toStringAsFixed(2)} µs';
-  if (nanos < 1000000000000) return '${(nanos / 1000000000).toStringAsFixed(2)} ms';
-  return '${(nanos / 1000000000000).toStringAsFixed(2)} s';
+  final micros = d.inMicroseconds;
+  if (micros < 1000) return '$micros µs';
+  if (micros < 1000000) return '${(micros / 1000).toStringAsFixed(2)} ms';
+  return '${(micros / 1000000).toStringAsFixed(2)} s';
 }
 
 Future<File?> pullFile(
