@@ -15,25 +15,31 @@ const kPionitesLeucogasterGenomeUrl =
     "https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/025/448/055/GCA_025448055.1_ASM2544805v1/GCA_025448055.1_ASM2544805v1_genomic.fna.gz";
 
 Future<void> main() async {
-  // Cache directory for the files
-  // ! DO NOT check this into source control as it will contain large files.
   final kCacheDirectory = Directory('.data/');
-  final logger = Logger('file-downloading');
+  final logger = Logger('benchmark');
 
-  // ignore: avoid_print
   final loggingSubscription = logger.onRecord.listen((e) => print(e));
 
-  // download the fasta file
   final genomeFile = await pullFile(kPionitesLeucogasterGenomeUrl, kCacheDirectory, logger: logger);
+  if (genomeFile == null) return;
 
-  final source = SyncFileSource(genomeFile!)..open();
+  final source = SyncFileSource(genomeFile);
+  List<FastaRead> allSequences = [];
 
-  final first5Sequences = parseSync(
-    (b) => zlibDecode(b, readEntries),
-    source,
-  ).take(5).toList();
+  final durations = benchmark(
+    () {
+      allSequences = parseSync(
+        (b) => zlibDecode(b, (b) => readEntries(b, chunkReadSize: 4096 * 8), decompressChunkSize: 4096 * 16),
+        source,
+      ).take(2000).toList();
+    },
+    10,
+    setupAll: () => source.open(),
+    cleanupAll: () => source.close(),
+  );
 
-  print(first5Sequences);
+  printDurationStats(durations, logger: logger);
+  logger.info('Parsed ${allSequences.length} sequences');
 
   await loggingSubscription.cancel();
 }
