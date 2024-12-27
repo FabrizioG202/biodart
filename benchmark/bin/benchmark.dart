@@ -18,6 +18,7 @@ Future<void> main() async {
   final kCacheDirectory = Directory('.data/');
   final logger = Logger('benchmark');
 
+  // ignore: avoid_print
   final loggingSubscription = logger.onRecord.listen((e) => print(e));
 
   final genomeFile = await pullFile(kPionitesLeucogasterGenomeUrl, kCacheDirectory, logger: logger);
@@ -29,9 +30,9 @@ Future<void> main() async {
   final durations = benchmark(
     () {
       allSequences = parseSync(
-        (b) => zlibDecode(b, (b) => readEntries(b, chunkReadSize: 4096 * 8), decompressChunkSize: 4096 * 16),
+        (b) => zlibDecode(b, (b) => readEntries(b, chunkReadSize: 4096), decompressChunkSize: 4096),
         source,
-      ).take(200).toList();
+      ).take(20000).toList();
     },
     10,
     setupAll: () => source.open(),

@@ -3,3 +3,4 @@ pubspec.lock
 .data/
 .vscode/
 
+benchmark/bin/single.dart
