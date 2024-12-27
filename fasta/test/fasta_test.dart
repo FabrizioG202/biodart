@@ -83,10 +83,10 @@ void main() {
       expect(
         () => parseSync(readEntries, source).toList(),
         throwsA(
-          isA<Exception>().having(
+          isA<FastaFormatException>().having(
             (e) => e.toString(),
             'message',
-            contains('Empty sequence for header'),
+            contains('empty sequence'),
           ),
         ),
       );
