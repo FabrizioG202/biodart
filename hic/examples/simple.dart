@@ -22,7 +22,7 @@ void main() {
   // happening at each step, while also balancing the
   // verbosity of the code and performance.
   // and of the `readers` package, which is used to read the file.
-  handleSync(
+  parseSync(
     (b) sync* {
       yield* file.readHeader(b).passthrough<void>();
       yield* file.readMasterIndex(b).passthrough<void>();
@@ -44,7 +44,7 @@ void main() {
   //
   // I am working on a way to make this better.
   // final expectedValues = file.getExpectedValues(resolution, );
-  final contacts = handleSync(
+  final contacts = parseSync(
     (b) => file.iterateContacts(
       b,
       chr1,

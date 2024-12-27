@@ -9,7 +9,7 @@ void main() {
   final source = SyncFileSource(File('../.data/v8.hic'))..open();
   final file = HiCFile();
 
-  handleSync(
+  parseSync(
     (b) sync* {
       yield* file.readHeader(b).passthrough<void>();
       yield* file.readMasterIndex(b).passthrough<void>();
@@ -21,7 +21,7 @@ void main() {
   // We want to save the contacts for the full chromosome 1 at 100kb resolution.
   final chr1 = file.header.genome.getChromosome('1').asRange();
   const resolution = Resolution.bp(100000);
-  final chr1at100Kb = handleSync(
+  final chr1at100Kb = parseSync(
     (b) => file.iterateContacts(
       b,
       chr1,

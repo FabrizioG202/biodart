@@ -45,8 +45,7 @@ final class Resolution {
 
   @override
   bool operator ==(covariant Resolution other) {
-    return identical(this, other) ||
-        other.binSize == binSize && other.type == type;
+    return identical(this, other) || other.binSize == binSize && other.type == type;
   }
 
   @override
@@ -108,8 +107,7 @@ final class Header {
       genome: genome ?? this.genome,
       resolutions: resolutions ?? this.resolutions,
       footerPosition: footerPosition ?? this.footerPosition,
-      expectedVectorsRegion:
-          expectedVectorsRegion ?? this.expectedVectorsRegion,
+      expectedVectorsRegion: expectedVectorsRegion ?? this.expectedVectorsRegion,
       sites: sites ?? this.sites,
     );
   }
@@ -169,14 +167,12 @@ final class HiCFile {
 
   /// Contains the position and length of the matrices in the file.
   /// [HiCFile.readMasterIndex] must have been called before this field is accessed.
-  MasterIndex get masterIndex =>
-      _masterIndex ?? _throwStateError('Master index was not parsed');
+  MasterIndex get masterIndex => _masterIndex ?? _throwStateError('Master index was not parsed');
   MasterIndex? _masterIndex;
 
   /// Contains the expected values for the file.
   /// [HiCFile.readExpectedValueVectors] must have been called before this field is accessed.
-  List<ExpectedValues> get expectedValues =>
-      _expectedValues ?? _throwStateError('Expected values were not parsed');
+  List<ExpectedValues> get expectedValues => _expectedValues ?? _throwStateError('Expected values were not parsed');
   List<ExpectedValues>? _expectedValues;
 
   ExpectedValues? getExpectedValues(
@@ -184,8 +180,7 @@ final class HiCFile {
     String? normalization,
   ]) =>
       expectedValues.firstWhereOrNull(
-        (e) =>
-            e.resolution == resolution && e.normalizationType == normalization,
+        (e) => e.resolution == resolution && e.normalizationType == normalization,
       );
 
   /// Read the header of the file.
@@ -337,10 +332,7 @@ final class HiCFile {
 
     // here we update the header to contain the position of the normalization data.
     _header = header.copyWith(
-      expectedVectorsRegion: (
-        offset: cursor.position + header.footerPosition,
-        length: nBytes + 4
-      ),
+      expectedVectorsRegion: (offset: cursor.position + header.footerPosition, length: nBytes + 4),
     );
     yield CompleteParseResult(_masterIndex = masterIndex);
   }
@@ -485,16 +477,14 @@ final class HiCFile {
     final expectedValueNormalizator = switch (kind) {
       _Observed() => null,
       _OverExpected() => getExpectedValues(resolution),
-      _Normalized(:final normalizationType) =>
-        getExpectedValues(resolution, normalizationType),
+      _Normalized(:final normalizationType) => getExpectedValues(resolution, normalizationType),
     };
 
-    final chrScaleNormalization =
-        expectedValueNormalizator?.scaleFactorForChromosomeIndices(
-              seqIdx1,
-              seqIdx2,
-            ) ??
-            1.0;
+    final chrScaleNormalization = expectedValueNormalizator?.scaleFactorForChromosomeIndices(
+          seqIdx1,
+          seqIdx2,
+        ) ??
+        1.0;
 
     // We round the range to the nearest bin
     final xRangeInBins = xRange.copyWith(
@@ -538,8 +528,7 @@ final class HiCFile {
       // to allow for any kind of List<int> instead of just Uint8List
       // Also, at this point, we are currently storing both the compressed and decompressed
       // data in memory, which is not ideal.
-      final blockBuffer =
-          ByteAccumulator.withData(Uint8List.fromList(zlib.decode(blockBytes)));
+      final blockBuffer = ByteAccumulator.withData(Uint8List.fromList(zlib.decode(blockBytes)));
       final blockCursor = SliceCursor.collapsed();
 
       // ignore: unused_local_variable
@@ -564,10 +553,7 @@ final class HiCFile {
               final recordCount = getInt16(blockBuffer, blockCursor);
 
               for (var j = 0; j < recordCount; j++) {
-                yield (
-                  (getInt16(blockBuffer, blockCursor) + binXOffset),
-                  (binYOffset + rowNumber)
-                );
+                yield ((getInt16(blockBuffer, blockCursor) + binXOffset), (binYOffset + rowNumber));
               }
             }
           },
@@ -592,17 +578,12 @@ final class HiCFile {
       for (final (binX, binY) in iterator()) {
         // PERFORMANCE: We might save some time by not parsing the number if the
         // bin is not in the range and just skipping the bytes.
-        final value = useFloat
-            ? getFloat32(blockBuffer, blockCursor)
-            : getInt16(blockBuffer, blockCursor).toDouble();
+        final value = useFloat ? getFloat32(blockBuffer, blockCursor) : getInt16(blockBuffer, blockCursor).toDouble();
 
         if (xRangeInBins.contains(binX) && yRangeInBins.contains(binY)) {
           // normalize the value if needed
           final normalizedValue = expectedValueNormalizator != null
-              ? value /
-                  (expectedValueNormalizator
-                          .valueForDistance((binX - binY).abs()) *
-                      chrScaleNormalization)
+              ? value / (expectedValueNormalizator.valueForDistance((binX - binY).abs()) * chrScaleNormalization)
               : value;
 
           yield CompleteParseResult.incomplete((binX, binY, normalizedValue));
@@ -618,8 +599,8 @@ final class HiCFile {
     ByteAccumulator buffer,
   ) sync* {
     // check that we have the normalization position
-    final filePosition = header.expectedVectorsRegion
-        .expect('Normalization position not found, call readMasterIndex first');
+    final filePosition =
+        header.expectedVectorsRegion.expect('Normalization position not found, call readMasterIndex first');
 
     // Expected value vectors
     final cursor = SliceCursor.collapsed();
@@ -764,8 +745,7 @@ final class HiCFile {
         // divide the value by the expected value based on distance
         // TODO: this might produce a NaN if the expected value is 0
         // so maybe handle that case...
-        (value /
-            (expectedValueBasedOnDistance * chr1ScaleFactor * chr2ScaleFactor))
+        (value / (expectedValueBasedOnDistance * chr1ScaleFactor * chr2ScaleFactor))
       );
     }
   }
@@ -784,8 +764,7 @@ final class ExpectedValues {
     required this.resolution,
   });
 
-  double valueForDistance(int distance) =>
-      values[distance.clamp(0, values.length - 1)];
+  double valueForDistance(int distance) => values[distance.clamp(0, values.length - 1)];
 
   double scaleFactorForChromosomeIndices(int chr1, int chr2) =>
       chrScaleFactors
@@ -810,8 +789,7 @@ sealed class ContactsKind {
   const ContactsKind();
   static const observed = _Observed();
   static const overExpected = _OverExpected();
-  factory ContactsKind.normalized(String normalizationType) =>
-      _Normalized(normalizationType);
+  factory ContactsKind.normalized(String normalizationType) => _Normalized(normalizationType);
 }
 
 final class _Observed extends ContactsKind {
@@ -869,8 +847,7 @@ class ValidationError extends Error {
 
 extension ValidateExt<T> on T {
   @pragma('vm:prefer-inline')
-  Y validate<Y, E extends Error>(MapValidator<T, Y, E> validator) =>
-      validator(this);
+  Y validate<Y, E extends Error>(MapValidator<T, Y, E> validator) => validator(this);
 }
 
 // TODO: add the possibility of adding a custom error message.

@@ -48,8 +48,9 @@ Module for reading [Hi-C](<https://en.wikipedia.org/wiki/Hi-C_(genomic_analysis_
 
 Module for reading and writing FASTA files. This module is currently in a semi-usable state and is being worked on. See the subdirectory's `example` folder for more information.
 
-> [!WARNING]
-> Performance is still abysmal as the readers package lacks user-defined customization and in turn performance tuning for specific workloads.
+> [!NOTE]
+>
+> `biodart`s implementation appears to be similar to `BioPython's` performance on the same task. Check the `benchmark` package and `benchmark/scripts` for the python code.
 
 # 🚀 Roadmap
 
