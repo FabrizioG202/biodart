@@ -3,8 +3,50 @@
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:meta/meta.dart';
 import 'package:readers/readers.dart';
+
+sealed class FastaParserState {
+  const FastaParserState();
+
+  const factory FastaParserState.inHeader(int startPosition) = _InHeader;
+  const factory FastaParserState.inSequence(int thisChunkStart) = _InSequence;
+  const factory FastaParserState.blank() = _Blank;
+}
+
+final class _InHeader extends FastaParserState {
+  const _InHeader(this.startPosition);
+
+  // The index of the start position
+  final int startPosition;
+
+  @override
+  String toString() => '_InHeader(startPosition: $startPosition)';
+}
+
+final class _InSequence extends FastaParserState {
+  const _InSequence(this.thisChunkStart);
+
+  // Might be superfluos since we now have the thisChunkStart.
+  final int thisChunkStart;
+
+  @override
+  String toString() => '_InSequence(thisChunkStart: $thisChunkStart)';
+}
+
+final class _Blank extends FastaParserState {
+  const _Blank();
+
+  @override
+  String toString() => '_Blank()';
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                   CLASSES                                  */
+/* -------------------------------------------------------------------------- */
 
 /// Represents a single FASTA sequence entry.
 @immutable
@@ -18,14 +60,22 @@ final class FastaRead {
   final String sequence;
 
   /// Length of the sequence.
-  int get length => sequence.length;
+  int get length {
+    return sequence.length;
+  }
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) || other is FastaRead && other.header == header && other.sequence == sequence;
+  bool operator ==(Object other) {
+    return identical(this, other) || other is FastaRead && other.header == header && other.sequence == sequence;
+  }
 
   @override
-  int get hashCode => Object.hash(header, sequence);
+  int get hashCode {
+    return Object.hash(
+      header,
+      sequence,
+    );
+  }
 
   @override
   String toString() => 'FastaRead(header: $header, length: $length)';
@@ -41,76 +91,108 @@ class FastaFormatException implements Exception {
   String toString() => 'FastaFormatException: $message';
 }
 
-// Very Naive Implementation of a FastA file parser.
-// It is mainly
-ParseIterable<FastaRead> readEntries(ByteAccumulator buffer) sync* {
+ParseIterable<FastaRead> readEntries(ByteAccumulator buffer, {int chunkReadSize = 1024}) sync* {
   final cursor = Cursor();
+  var state = const FastaParserState.blank();
+  String? header;
 
-  // Fasta Stuff
-  var header = '';
-  final sequence = StringBuffer();
-  var isInHeader = false;
-  var hasSequence = false;
-  var position = 0;
+  // Buffer where we store the read temporarily, to nicely
+  // handle multiline strings.
+  final sequenceReadBuffer = BytesBuilder(copy: false);
+
+  @pragma('vm:prefer-inline')
+  FastaRead generateRead() {
+    return FastaRead(header!, String.fromCharCodes(sequenceReadBuffer.takeBytes()));
+  }
 
   while (true) {
-    // Request 5 bytes.
-    // This is an arbitrary length to not read too much data at the same time.
-    yield ByteRangeRequest(cursor.position, cursor.position + 5, purgePreceding: true);
+    // Request at minimium [chunkReadSize]
+    yield ByteRangeRequest(cursor.position, cursor.position + chunkReadSize);
 
-    // Get the view bytes and, since exact is false,
-    // we might have read less bytes than 5, we advance the cursor only
-    // to that point.
-    final view = buffer.viewRange(cursor.position, buffer.lengthInBytes);
-    cursor.advance(view.length);
+    // grab the chunk we just read.
+    final chunk = buffer.viewRange(cursor.position, buffer.lengthInBytes);
 
-    // No more bytes were read.
-    if (view.isEmpty) break;
+    // Grab a reference to the current position
+    final chunkStartAbsoluteOffset = cursor.position;
+    cursor.advance(chunk.length);
 
-    for (final char in view.map(String.fromCharCode)) {
-      position++;
+    // We read no data, we are at the end of the file
+    // and thus read nothing, break out of the mainloop
+    if (chunk.isEmpty) break;
+
+    for (var i = 0; i < chunk.length; i++) {
+      final char = chunk[i];
+      final absoluteBufferPos = i + chunkStartAbsoluteOffset;
 
       switch (char) {
-        case '>':
-          if (hasSequence) {
-            if (sequence.isEmpty) {
-              throw FastaFormatException(
-                'Empty sequence for header "$header" at position $position',
-              );
+        case (kNewline) when state is _Blank:
+          break;
+        case kGreaterThan when state is _Blank:
+
+          // we also yield the previous sequence
+          // here maybe we should have a check to
+          // say that the sequence should not be empty.
+          // since that would mean a repeated header (i believe)
+          if (header != null) {
+            if (sequenceReadBuffer.isEmpty) {
+              throw FastaFormatException('Found empty sequence for header: $header');
             }
-            final seq = sequence.toString().replaceAll(RegExp(r'\s'), '');
-            yield ParseResult(FastaRead(header, seq));
-            sequence.clear();
-          }
-          header = '';
-          isInHeader = true;
-          hasSequence = true;
 
-        case '\n' || '\r':
-          isInHeader = false;
+            yield ParseResult(generateRead());
 
-        case String s:
-          if (!hasSequence && !isInHeader && s.trim().isNotEmpty) {
-            throw FastaFormatException(
-              'Found sequence data before header at position $position',
-            );
+            // Reset the sequence buffer and header
+            sequenceReadBuffer.clear();
+            header = null;
           }
-          if (isInHeader) {
-            header += s;
-          } else if (s.trim().isNotEmpty) {
-            sequence.write(s);
+
+          // entering into header
+          state = FastaParserState.inHeader(absoluteBufferPos);
+
+        case _ when state is _Blank:
+          // if we are here and do not have an header,
+          if (header == null) {
+            throw const FastaFormatException('Found sequence data before header');
           }
+
+          // move to sequence state
+          state = FastaParserState.inSequence(absoluteBufferPos);
+
+        case (kNewline || kCarriageReturn) when state is _InHeader:
+          // We have a header, and we are at the end of the header
+          // if we are here, we should not have an header already.
+          header = String.fromCharCodes(
+            buffer.viewRange(state.startPosition + 1 /* Skip the > symbol */, absoluteBufferPos),
+          );
+
+          // We are now in the sequence
+          state = const _Blank();
+        case _ when state is _InHeader:
+          break;
+
+        case (kNewline || kCarriageReturn) when state is _InSequence:
+
+          // We could either be at a split in a sequence or at the end of it.
+          // since we do not know, we simply add the sequence to the buffer
+          // and continue.
+          sequenceReadBuffer.add(buffer.viewRange(state.thisChunkStart, absoluteBufferPos));
+          state = const _Blank();
+        case (_) when state is _InSequence:
+          break;
       }
     }
   }
 
-  if (hasSequence) {
-    if (sequence.isEmpty) {
-      throw FastaFormatException(
-        'Empty sequence for header "$header" at position $position',
-      );
+  // If we are here, we have read the entire file
+  // and we should yield the last sequence.
+  if (header != null) {
+    if (state case _InSequence(:final thisChunkStart)) {
+      sequenceReadBuffer.add(buffer.viewRange(thisChunkStart, buffer.lengthInBytes));
     }
-    final seq = sequence.toString().replaceAll(RegExp(r'\s'), '');
-    yield ParseResult(FastaRead(header, seq));
+
+    yield ParseResult(generateRead());
   }
 }
+
+const kNewline = 10;
+const kCarriageReturn = 13;
+const kGreaterThan = 62;

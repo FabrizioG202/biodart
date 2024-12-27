@@ -9,16 +9,20 @@ import 'package:fasta/fasta.dart' as fasta_lib;
 import 'package:readers/readers.dart';
 
 void main() {
-  final source = SyncFileSource(File('./test/data/fasta1.fa'))..open();
+  // Create a source from the file and open it.
+  final source = SyncFileSource(
+    File(
+      './test/data/fasta1.fa',
+    ),
+  )..open();
 
   final reads = parseSync(
-    fasta_lib.readEntries,
+    (b) => fasta_lib.readEntries(b),
     source,
-  );
+  ).toList();
 
-  print(
-    reads,
-  ); // (FastaRead(header: sequence1, length: 26), FastaRead(header: sequence2, length: 22), FastaRead(header: sequence3, length: 22))
+  print(reads);
 
+  // Close the source.
   source.close();
 }
