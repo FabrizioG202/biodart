@@ -7,10 +7,12 @@
 import 'dart:io';
 
 import 'package:benchmark/benchmark.dart';
-import 'package:logging/logging.dart';
 import 'package:fasta/fasta.dart';
+import 'package:logging/logging.dart';
 import 'package:readers/readers.dart';
 
+/// Genome of white-bellied parrot (Pionites Leucogaster), contains ~90K sequences
+/// and has a (compressed) size of ~1GB
 const kPionitesLeucogasterGenomeUrl =
     "https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/025/448/055/GCA_025448055.1_ASM2544805v1/GCA_025448055.1_ASM2544805v1_genomic.fna.gz";
 
