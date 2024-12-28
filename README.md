@@ -17,7 +17,7 @@ Dart is a relatively modern language, with a strong type system, and a focus on 
 > [!IMPORTANT]
 > The contents of this repo are still in very early stages of development and are not yet ready for production use. Refer to the [Roadmap Section](#roadmap) for more information.
 
-> [!Note]
+> [!NOTE]
 > This project is currently maintained only by me, mirroring the requirements of personal projects, but features can be requested and contributions are welcome. Feel free to get in contact if you would like to help development.
 
 # Disclaimer:
@@ -32,14 +32,11 @@ Main module containing common genomics data structures and algorithms.
 
 ## benchmark
 
-Utility module to aid in benchmarking of the biodart features. Provides method to download and cache large files. Will be expanded in the near future to keep up with benchmarking and testing needs.
-
-> [!NOTE]
-> Warning.
+Utility module to aid in benchmarking of the biodart features. Provides method to download and cache large files. The module will be expanded in the near future to keep up with benchmarking and testing needs.
 
 ## hic
 
-Module for reading [Hi-C](<https://en.wikipedia.org/wiki/Hi-C_(genomic_analysis_technique)>) contact maps. Currently it supports only V8 files ([format specification](https://github.com/aidenlab/hic-format/blob/master/HiCFormatV8.md), though support for V9 and older formats is being actively worked on.
+Module for reading [Hi-C](<https://en.wikipedia.org/wiki/Hi-C_(genomic_analysis_technique)>) contact maps. Currently it supports only V8 files ([format specification](https://github.com/aidenlab/hic-format/blob/master/HiCFormatV8.md)), though support for V9 and older formats is being actively worked on.
 
 > [!WARNING]
 > The hic package was fully broken by the update in the readers package it relied upon. I am working on a fix for that.
@@ -50,7 +47,7 @@ Module for reading and writing FASTA files. This module is currently in a semi-u
 
 > [!NOTE]
 >
-> `biodart`s implementation appears to be similar to `BioPython's` performance on the same task. Check the `benchmark` package and `benchmark/scripts` for the python code.
+> When dealing with the same task, `biodart`s implementation of sequence parsing appears to match to `BioPython's` performance. Check the `benchmark` package and `benchmark/scripts` for the equivalent python code.
 
 # 🚀 Roadmap
 
