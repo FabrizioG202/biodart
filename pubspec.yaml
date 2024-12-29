@@ -1,6 +1,6 @@
 name: biodart
+publish_to: none
 workspace:
-  - hic/
   - genomics/
   - fasta/
   - benchmark/
