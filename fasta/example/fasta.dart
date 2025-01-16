@@ -15,7 +15,7 @@ void main() {
   final reads =
       parseSync((comp) {
         return zlibDecode(comp, (buff) {
-          return fasta_lib.yieldReads(comp);
+          return fasta_lib.iterateReads(comp);
         });
       }, source).toList();
 

@@ -1,4 +1,4 @@
-import 'dart:convert' show Encoding, ascii, utf8;
+import 'dart:convert' show Encoding, ascii;
 import 'dart:math' show max;
 import 'dart:typed_data' show Uint8List;
 
@@ -17,27 +17,35 @@ import 'package:readers/readers.dart'
 // ignore: constant_identifier_names
 const _EOF = -2;
 
-ParseIterable<LazyBytesFastaRecord> yieldReads(
+ParseIterable<LazyBytesFastaRecord> iterateReads(
   ByteAccumulator accumulator,
 ) sync* {
   final Cursor cursor = Cursor(-1);
   int readStart;
 
-  // TODO: We might use a more efficient data structure for offsets,
-  // ByteAccumulator might be a good candidate
-  final offsets = <int>[];
+  final offsetsAccumulator = ByteAccumulator.zeros(initialSize: 8);
 
   for (;;) {
     readStart = cursor.position;
     cursor.next();
-    yield* parseRead(accumulator, cursor, max(readStart, 0), offsets);
+    yield* parseRead(
+      accumulator,
+      cursor,
+      max(readStart, 0),
+      offsetsAccumulator,
+    );
 
     if (readStart >= 0 && cursor.position != readStart) {
       final chunkEnd =
           cursor.position == _EOF ? accumulator.lastOffset : cursor.position;
 
       final readBytes = accumulator.getRange(readStart, chunkEnd);
-      yield ParseResult(LazyBytesFastaRecord(readBytes, List.from(offsets)));
+      yield ParseResult(
+        LazyBytesFastaRecord(
+          readBytes,
+          offsetsAccumulator.getRange(0, offsetsAccumulator.lastOffset),
+        ),
+      );
     }
 
     // Collapse the buffer to free up memory.
@@ -48,11 +56,10 @@ ParseIterable<LazyBytesFastaRecord> yieldReads(
       break;
     }
 
-    offsets
-      ..clear()
-      // For now, the byte ranges are always 0-based,
-      // since we sublist the buffer starting from the cursor position.
-      ..addAll([0]);
+    // For now, the byte ranges are always 0-based,
+    // since we sublist the buffer starting from the cursor position.
+    // and since the
+    offsetsAccumulator.trimToRange(startOffset: 0, endOffset: 1);
   }
 }
 
@@ -60,7 +67,7 @@ Iterable<RequestRangeForReading> parseRead(
   ByteAccumulator acc,
   Cursor cursor,
   int startFrom,
-  List<int> offsets, {
+  ByteAccumulator offsets, {
   int seekChunkSize = 8,
 }) sync* {
   // The first offset (in buffer-coordinates) that we want to
@@ -76,7 +83,7 @@ Iterable<RequestRangeForReading> parseRead(
       // if the buffer length matches the cursor.position,
       // we read 0 bytes, and we should break.
       if (acc.lastOffset == cursor.position) {
-        offsets.add(cursor.position - dataStart);
+        offsets.setByte(offsets.lastOffset - 1, cursor.position - dataStart);
         cursor.positionAt(_EOF);
         return;
       }
@@ -89,7 +96,8 @@ Iterable<RequestRangeForReading> parseRead(
     if (byte == 62) {
       return;
     } else if (byte == 10 || byte == 13) {
-      offsets.add(cursor.position - dataStart);
+      // offsets.add(cursor.position - dataStart);
+      offsets.setByte(offsets.lastOffset - 1, cursor.position - dataStart);
     }
 
     cursor.next();

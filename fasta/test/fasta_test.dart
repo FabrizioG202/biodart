@@ -38,11 +38,11 @@ void main() {
   }
 
   group('Uncompressed FASTA', () {
-    runParserTests('fasta1.fa', yieldReads);
+    runParserTests('fasta1.fa', iterateReads);
   });
 
   group('Compressed FASTA', () {
-    runParserTests('fasta1.fa.gz', (b) => zlibDecode(b, yieldReads));
+    runParserTests('fasta1.fa.gz', (b) => zlibDecode(b, iterateReads));
   });
 
   group('Error Handling', () {
