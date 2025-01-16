@@ -4,11 +4,12 @@ version: 1.0.0
 publish_to: none
 
 environment:
-  sdk: ^3.6.0
+  sdk: ">=3.7.0-209.1.beta <4.0.0"
 
 resolution: workspace
 
 dependencies:
+  collection:
   meta:
   readers:
 

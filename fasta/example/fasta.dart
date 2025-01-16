@@ -10,18 +10,16 @@ import 'package:readers/readers.dart';
 
 void main() {
   // Create a source from the file and open it.
-  final source = SyncFileSource(
-    File(
-      './test/data/fasta1.fa',
-    ),
-  )..open();
+  final source = SyncFileSource(File('./test/data/fasta1.fa.gz'))..open();
 
-  final reads = parseSync(
-    (b) => fasta_lib.readEntries(b),
-    source,
-  ).toList();
+  final reads =
+      parseSync((comp) {
+        return zlibDecode(comp, (buff) {
+          return fasta_lib.yieldReads(comp);
+        });
+      }, source).toList();
 
-  print(reads);
+  print(reads.length);
 
   // Close the source.
   source.close();

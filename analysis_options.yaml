@@ -20,3 +20,6 @@ linter:
     avoid_multiple_declarations_per_line: false
     sort_constructors_first: true
     empty_constructor_bodies: true
+
+formatter:
+  page_width: 80

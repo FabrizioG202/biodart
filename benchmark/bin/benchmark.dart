@@ -23,18 +23,24 @@ Future<void> main() async {
   // ignore: avoid_print
   final loggingSubscription = logger.onRecord.listen((e) => print(e));
 
-  final genomeFile = await pullFile(kPionitesLeucogasterGenomeUrl, kCacheDirectory, logger: logger);
+  final genomeFile = await pullFile(
+    kPionitesLeucogasterGenomeUrl,
+    kCacheDirectory,
+    logger: logger,
+  );
   if (genomeFile == null) return;
 
   final source = SyncFileSource(genomeFile);
-  List<FastaRead> allSequences = [];
+  List<FastaRecordMixin> allSequences = [];
 
   final durations = benchmark(
     () {
-      allSequences = parseSync(
-        (b) => zlibDecode(b, (b) => readEntries(b, chunkReadSize: 4096), decompressChunkSize: 4096),
-        source,
-      ).take(20000).toList();
+      allSequences =
+          parseSync(
+            (b) =>
+                zlibDecode(b, (b) => yieldReads(b), decompressChunkSize: 4096),
+            source,
+          ).take(1000).toList();
     },
     10,
     setupAll: () => source.open(),

@@ -8,7 +8,7 @@
 # It is not very idiomatic to python as I am trying to keep the structure
 # similar to the dart's one. However, I tried to not impede performance
 # in doing so.
-# ! This must be ran after the dart's code since this does not contain utility
+# ! This must be ran after the dart code since this does not contain utility
 # functions to download the file (s).
 
 from Bio import SeqIO
