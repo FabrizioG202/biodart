@@ -39,7 +39,7 @@ Future<void> main() async {
           parseSync(
             (b) => zlibDecode(
               b,
-              (b) => iterateReads(b),
+              (b) => iterateReads(b, seekChunkSize: 1024),
               decompressChunkSize: 4096,
             ),
             source,

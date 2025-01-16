@@ -2,7 +2,7 @@ import 'dart:convert' show Encoding, ascii;
 import 'dart:math' show max;
 import 'dart:typed_data' show Uint8List;
 
-import 'package:meta/meta.dart' show immutable;
+import 'package:meta/meta.dart' show immutable, internal;
 import 'package:readers/readers.dart'
     show
         ByteAccumulator,
@@ -18,8 +18,9 @@ import 'package:readers/readers.dart'
 const _EOF = -2;
 
 ParseIterable<LazyBytesFastaRecord> iterateReads(
-  ByteAccumulator accumulator,
-) sync* {
+  ByteAccumulator accumulator, {
+  int seekChunkSize = 8,
+}) sync* {
   final Cursor cursor = Cursor(-1);
   int readStart;
 
@@ -28,11 +29,12 @@ ParseIterable<LazyBytesFastaRecord> iterateReads(
   for (;;) {
     readStart = cursor.position;
     cursor.next();
-    yield* parseRead(
+    yield* digestRead(
       accumulator,
       cursor,
       max(readStart, 0),
       offsetsAccumulator,
+      seekChunkSize: seekChunkSize,
     );
 
     if (readStart >= 0 && cursor.position != readStart) {
@@ -63,12 +65,13 @@ ParseIterable<LazyBytesFastaRecord> iterateReads(
   }
 }
 
-Iterable<RequestRangeForReading> parseRead(
+@internal
+Iterable<RequestRangeForReading> digestRead(
   ByteAccumulator acc,
   Cursor cursor,
   int startFrom,
   ByteAccumulator offsets, {
-  int seekChunkSize = 8,
+  required int seekChunkSize,
 }) sync* {
   // The first offset (in buffer-coordinates) that we want to
   // be able to read.
