@@ -121,8 +121,8 @@ class LazyBytesFastaRecord with FastaRecordMixin {
   final List<int> offsets;
 
   @override
-  String getHeader() {
-    return utf8.decode(bytes.sublist(offsets[0], offsets[1]));
+  String getHeader({Encoding encoding = ascii}) {
+    return encoding.decode(bytes.sublist(offsets[0], offsets[1]));
   }
 
   @override
@@ -137,6 +137,6 @@ class LazyBytesFastaRecord with FastaRecordMixin {
       }
       sequenceBytes.addAll(bytes.sublist(start + 1, end));
     }
-    return ascii.decode(sequenceBytes);
+    return encoding.decode(sequenceBytes);
   }
 }
