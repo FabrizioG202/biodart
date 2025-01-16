@@ -17,6 +17,17 @@ import 'package:readers/readers.dart'
 // ignore: constant_identifier_names
 const _EOF = -2;
 
+/// An utility function to add an item to a byte accumulator
+/// (under the hood it calls [trimToRange] on the accumulator and appends).
+// TODO: Move this into the readers package.
+extension ByteAccumulatorAdd on ByteAccumulator {
+  void addByte(int byte) {
+    final lastOffset = this.lastOffset;
+    trimToRange(startOffset: 0, endOffset: lastOffset + 1);
+    setByte(lastOffset, byte);
+  }
+}
+
 ParseIterable<LazyBytesFastaRecord> iterateReads(
   ByteAccumulator accumulator, {
   int seekChunkSize = 8,
@@ -86,7 +97,7 @@ Iterable<RequestRangeForReading> digestRead(
       // if the buffer length matches the cursor.position,
       // we read 0 bytes, and we should break.
       if (acc.lastOffset == cursor.position) {
-        offsets.setByte(offsets.lastOffset - 1, cursor.position - dataStart);
+        offsets.addByte(cursor.position - dataStart);
         cursor.positionAt(_EOF);
         return;
       }
@@ -100,7 +111,7 @@ Iterable<RequestRangeForReading> digestRead(
       return;
     } else if (byte == 10 || byte == 13) {
       // offsets.add(cursor.position - dataStart);
-      offsets.setByte(offsets.lastOffset - 1, cursor.position - dataStart);
+      offsets.addByte(cursor.position - dataStart);
     }
 
     cursor.next();

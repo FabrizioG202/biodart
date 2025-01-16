@@ -1,7 +1,4 @@
-// Copyright (c) 2024 Fabrizio Guidotti
-//
-// This software is released under the MIT License.
-// https://opensource.org/licenses/MIT
+// ignore_for_file: avoid_print
 
 import 'dart:io';
 
@@ -15,11 +12,15 @@ void main() {
   final reads =
       parseSync((comp) {
         return zlibDecode(comp, (buff) {
-          return fasta_lib.iterateReads(comp);
+          return fasta_lib.iterateReads(buff);
         });
       }, source).toList();
 
-  print(reads.length);
+  for (final read in reads) {
+    print(read.getHeader());
+    print(read.getSequence());
+    print(read.getSequence().length);
+  }
 
   // Close the source.
   source.close();
